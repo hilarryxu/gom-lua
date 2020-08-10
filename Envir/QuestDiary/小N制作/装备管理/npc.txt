@@ -1,0 +1,71 @@
+[@NPC_FORM]
+{
+#IF
+#ACT
+NnDoLuaScript 小N制作/装备管理/script.lua build_form
+OPENMERCHANTBIGDLG 22 1 0 0 1 1 1 815 10
+#SAY
+<><$STR(S0)>
+
+[@LB_确认记录]
+#ACT
+NnDoLuaScript 小N制作/装备管理/script.lua add_record <$STR(S$NN_NPCPARAM_1)>
+GOTO @NPC_FORM
+BREAK
+
+[@LB_清除记录]
+#ACT
+NnDoLuaScript 小N制作/装备管理/script.lua del_record <$STR(S$NN_NPCPARAM_1)>
+GOTO @NPC_FORM
+BREAK
+
+[@LB_清空记录]
+#ACT
+NnDoLuaScript 小N制作/装备管理/script.lua clear_all
+GOTO @NPC_FORM
+BREAK
+
+[@LB_清空记录]
+#ACT
+NnDoLuaScript 小N制作/装备管理/script.lua record_all
+GOTO @NPC_FORM
+BREAK
+
+[@LB_查此物品]
+#IF
+CHECKLEVELEX > 0
+#ACT
+MOVE N0 <$STR(S$NN_NPCPARAM_2)>
+GOTO @LB_查询
+BREAK
+
+[@LB_查询]
+; 检查待查询Idx数值
+#IF
+NOT LARGE N0 0
+#ACT
+MOV N0 0
+GOTO @NPC_FORM
+MESSAGEBOX 请先输入您要查询的装备Idx序列号
+BREAK
+
+#IF
+#ACT
+MESSAGEBOX 准备查询<$STR(N0)>...
+MOV N0 0
+GOTO @NPC_FORM
+BREAK
+
+[@InPutInteger0]
+#OR
+SMALL N0 1
+LARGE N0 2000000000
+#ACT
+MOV N0 0
+GOTO @NPC_FORM
+MESSAGEBOX 请输入大于0且小于20亿的装备Idx序列号
+BREAK
+#ELSEACT
+GOTO @NPC_FORM
+BREAK
+}
