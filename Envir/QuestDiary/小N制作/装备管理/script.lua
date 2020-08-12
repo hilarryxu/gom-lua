@@ -124,9 +124,40 @@ function _M.on_pickup_item(params)
 
   db:exec("BEGIN")
   db:execute("SREM %s %d", KEY_RECORDED_ITEMS, arg_make_index)
-  db:execute('HSET %s i%d "%s"', KEY_RECORDED_ITEM_PICKUP_LOG,
+  db:execute('HSET %s %d "%s"', KEY_RECORDED_ITEM_PICKUP_LOG,
              arg_make_index, log_msg)
   db:exec("COMMIT")
+end
+
+function _M.search_record(params)
+  local make_index, var_code, var_msg = tonumber(params.s3), params.raw_s4, params.raw_s5
+
+  local npc = ffi_cast("TNormNpc*", params.npc)
+  local db = mir.vedis_db
+  local res, msg
+
+  db:execute("SISMEBER %s %d", KEY_RECORDED_ITEMS, make_index)
+  res = db:exec_result()
+  local did_recorded = res:to_bool()
+  if not did_recorded then
+    npc:set_var(params.player, var_code, 1)
+    msg = str_fmt("装备Idx序列号[%d]并未登记，无法查询", make_index)
+    npc:set_var(params.player, var_msg, msg)
+    return
+  end
+
+  db:execute("HGET %s %d", KEY_RECORDED_ITEM_PICKUP_LOG, make_index)
+  res = db:exec_result()
+  if res:is_null() then
+    npc:set_var(params.player, var_code, 2)
+    msg = str_fmt("装备Idx序列号[%d]并无任何数据记录，无法查询", make_index)
+    npc:set_var(params.player, var_msg, msg)
+    return
+  end
+
+  msg = res:to_string()
+  npc:set_var(params.player, var_code, 0)
+  npc:set_var(params.player, var_msg, msg)
 end
 
 function _M.build_form(params)
