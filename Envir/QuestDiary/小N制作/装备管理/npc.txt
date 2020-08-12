@@ -69,3 +69,12 @@ BREAK
 GOTO @NPC_FORM
 BREAK
 }
+
+
+@[捡取触发]
+{
+#IF
+#ACT
+NnDoLuaScript 小N制作/装备管理/script.lua on_pickup_item <$CURRTEMMAKEINDEX>
+}
+

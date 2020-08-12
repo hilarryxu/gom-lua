@@ -17,6 +17,9 @@ local _M = {
   max_record_useritem_nr = 15
 }
 
+local KEY_RECORDED_ITEMS = "recorded_items"
+local KEY_RECORDED_ITEM_PICKUP_LOG = "rip_log"
+
 local function res_to_list(res)
   assert(res:is_array())
   local out = {}
@@ -46,6 +49,7 @@ function _M.add_record(params)
     db:execute("HMSET u_uir:%s i%d %d n%d \"%s\"",
                 uid, index, useritem.make_index,
                 index, ffi_str(stditem.name))
+    db:execute("SADD %s %d", KEY_RECORDED_ITEMS, useritem.make_index)
     db:exec("COMMIT")
   end
 end
@@ -86,8 +90,42 @@ function _M.record_all(params)
       db:execute("HMSET u_uir:%s i%d %d n%d \"%s\"",
                   uid, index, useritem.make_index,
                   index, ffi_str(stditem.name))
+      db:execute("SADD %s %d", KEY_RECORDED_ITEMS, useritem.make_index)
     end
   end
+  db:exec("COMMIT")
+end
+
+function _M.on_pickup_item(params)
+  local arg_make_index = tonumber(params.s3)
+
+  -- local npc = ffi_cast("TNormNpc*", params.npc)
+  local uid = mir.player_get_uid(params.player)
+  local db = mir.vedis_db
+  local res
+
+  db:execute("SISMEBER %s %d", KEY_RECORDED_ITEMS, arg_make_index)
+  res = db:exec_result()
+  local did_recorded = res:to_bool()
+  if not did_recorded then return end
+
+  local found = false
+  for i = 1, _M.max_record_useritem_nr do
+    db:execute("HMGET u_uir:%s i%d n%d", uid, i, i)
+    local make_index, _ = unpack(res_to_list(db:exec_result()))
+    if make_index and tonumber(make_index) == arg_make_index then
+      found = true
+      break
+    end
+  end
+  if found then return end
+
+  local log_msg = [[日志：装备名字【<$CURRTEMNAME>】 装备Idx【<$CURRTEMMAKEINDEX>】 捡取人【<$USERNAME>】 行会【<$GUILDNAME>】 捡取地点【<$MapTitle>(<$X>:<$Y>)】 捡取时间【<$TIME>】]]
+
+  db:exec("BEGIN")
+  db:execute("SREM %s %d", KEY_RECORDED_ITEMS, arg_make_index)
+  db:execute('HSET %s i%d "%s"', KEY_RECORDED_ITEM_PICKUP_LOG,
+             arg_make_index, log_msg)
   db:exec("COMMIT")
 end
 
