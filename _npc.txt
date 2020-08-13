@@ -1,3 +1,5 @@
 ; NPC½Å±¾ÎÄ¼þ
 [@main]
 <> Hi
+
+;; vim: set et fenc=cp936 ff=dos filetype=mirscript :

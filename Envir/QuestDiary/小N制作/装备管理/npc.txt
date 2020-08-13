@@ -1,9 +1,26 @@
-[@NPC_FORM]
+[@NPC]
 {
+#IF
+CHECKLEVELEX > 0
+#ACT
+SetUpgradeItem 0
+
+#IF
+CheckBoxItemCount 0 1
+#ACT
+ReturnBoxItem 0
+
+#IF
+CHECKLEVELEX > 0
+#ACT
+MOV N0 0
+OPENMERCHANTBIGDLG 22 1 0 0 1 1 1 815 10
+GOTO @NPC_FORM
+
+[@NPC_FORM]
 #IF
 #ACT
 NnDoLuaScript 小N制作/装备管理/script.lua build_form
-OPENMERCHANTBIGDLG 22 1 0 0 1 1 1 815 10
 #SAY
 <><$STR(S0)>
 
@@ -25,9 +42,10 @@ NnDoLuaScript 小N制作/装备管理/script.lua clear_all
 GOTO @NPC_FORM
 BREAK
 
-[@LB_清空记录]
+[@LB_一键记录]
 #ACT
 NnDoLuaScript 小N制作/装备管理/script.lua record_all
+MESSAGEBOX 一键记录完毕！
 GOTO @NPC_FORM
 BREAK
 
@@ -35,7 +53,7 @@ BREAK
 #IF
 CHECKLEVELEX > 0
 #ACT
-MOVE N0 <$STR(S$NN_NPCPARAM_2)>
+MOV N0 <$STR(S$NN_NPCPARAM_2)>
 GOTO @LB_查询
 BREAK
 
@@ -80,11 +98,11 @@ GOTO @NPC_FORM
 BREAK
 }
 
-
-@[捡取触发]
+[@捡取触发]
 {
 #IF
 #ACT
 NnDoLuaScript 小N制作/装备管理/script.lua on_pickup_item <$CURRTEMMAKEINDEX>
 }
 
+;; vim: set et fenc=cp936 ff=dos filetype=mirscript :

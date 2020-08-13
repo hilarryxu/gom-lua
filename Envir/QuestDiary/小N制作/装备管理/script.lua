@@ -14,11 +14,19 @@ local iif = mir.iif
 -- local _p = mir.printf
 
 local _M = {
-  max_record_useritem_nr = 15
+  max_record_useritem_nr = 15,
+  allow_items_desc = '|250#祖玛剑甲、赤月首饰、赤月剑甲',
+  allow_item_names = {
+    ['屠龙'] = true,
+  },
 }
 
 local KEY_RECORDED_ITEMS = "recorded_items"
 local KEY_RECORDED_ITEM_PICKUP_LOG = "rip_log"
+
+local function item_can_record(item_name, useritem, stditem)
+  return _M.allow_item_names[item_name] == true
+end
 
 local function res_to_list(res)
   assert(res:is_array())
@@ -45,12 +53,15 @@ function _M.add_record(params)
   local useritem = player.useritems[index - 1]
   if useritem.make_index > 0 then
     local stditem = mir.get_stditem_by_idx(useritem.index)
-    db:exec("BEGIN")
-    db:execute("HMSET u_uir:%s i%d %d n%d \"%s\"",
-                uid, index, useritem.make_index,
-                index, ffi_str(stditem.name))
-    db:execute("SADD %s %d", KEY_RECORDED_ITEMS, useritem.make_index)
-    db:exec("COMMIT")
+    local item_name = ffi_str(stditem.name)
+    if item_can_record(item_name, useritem, stditem) then
+      db:exec("BEGIN")
+      db:execute("HMSET u_uir:%s i%d %d n%d \"%s\"",
+                  uid, index, useritem.make_index,
+                  index, item_name)
+      db:execute("SADD %s %d", KEY_RECORDED_ITEMS, useritem.make_index)
+      db:exec("COMMIT")
+    end
   end
 end
 
@@ -87,10 +98,13 @@ function _M.record_all(params)
     local useritem = useritems[index - 1]
     if useritem.make_index > 0 then
       local stditem = mir.get_stditem_by_idx(useritem.index)
-      db:execute("HMSET u_uir:%s i%d %d n%d \"%s\"",
-                  uid, index, useritem.make_index,
-                  index, ffi_str(stditem.name))
-      db:execute("SADD %s %d", KEY_RECORDED_ITEMS, useritem.make_index)
+      local item_name = ffi_str(stditem.name)
+      if item_can_record(item_name, useritem, stditem) then
+        db:execute("HMSET u_uir:%s i%d %d n%d \"%s\"",
+                    uid, index, useritem.make_index,
+                    index, item_name)
+        db:execute("SADD %s %d", KEY_RECORDED_ITEMS, useritem.make_index)
+      end
     end
   end
   db:exec("COMMIT")
@@ -161,6 +175,8 @@ function _M.search_record(params)
 end
 
 function _M.build_form(params)
+  local var_name = params.raw_s3 or "S0"
+
   local npc = ffi_cast("TNormNpc*", params.npc)
   local uid = mir.player_get_uid(params.player)
   local db = mir.vedis_db
@@ -189,16 +205,17 @@ function _M.build_form(params)
 　　　　　　　　　<2. /FCOLOR=239>将要记录的装备放入左边[<装备框/FCOLOR=249>]中，然后点击上方对应位置的[<确认记录/FCOLOR=249>]按钮\
 　　　　　　　　　<3. /FCOLOR=239><注意：/FCOLOR=249><装备掉落后,再通过其他途径取回后必须重新[/FCOLOR=253><确认记录/FCOLOR=249><]一次,否则无效!/FCOLOR=253>\
  \
-　　　　　　　　　<允许记录列表/FCOLOR=250> → <查看列表<$STR(S$允许列表)>/FCOLOR=125>　　<装备Idx：/FCOLOR=70> %s\
+　　　　　　　　　<允许记录列表/FCOLOR=250> → <查看列表%s>/FCOLOR=125>　　<装备Idx：/FCOLOR=70> %s\
  \
 　<查询/@LB_查询>         %s         <一键记录/@LB_一键记录>         <清空记录/@LB_清空记录>\
 <ITEMBOX:0:21:160:10:-122:70:70:*:250#请放入要记录的装备^254#然后在上方对应位置^254#点击[确认记录]按钮^151#如有信息,直接替换>\
 ]],
-          iif(N0 > 0, N0),
-          iif(N0 > 0, "<查询的装备/FCOLOR=10>", "<请输入Idx/@@InPutInteger0(请输入您要查询的装备Idx...)>")
+      _M.allow_items_desc,
+      iif(N0 > 0, N0),
+      iif(N0 > 0, "<查询的装备/FCOLOR=10>", "<请输入Idx/@@InPutInteger0(请输入您要查询的装备Idx...)>")
   ))
 
-  npc:set_var(params.player, "S0", table.concat(form))
+  npc:set_var(params.player, var_name, table.concat(form))
 end
 
 return _M
