@@ -1,7 +1,6 @@
 [@NPC]
 {
 #IF
-CHECKLEVELEX > 0
 #ACT
 SetUpgradeItem 0
 
@@ -11,7 +10,6 @@ CheckBoxItemCount 0 1
 ReturnBoxItem 0
 
 #IF
-CHECKLEVELEX > 0
 #ACT
 MOV N0 0
 OPENMERCHANTBIGDLG 22 1 0 0 1 1 1 815 10
@@ -25,33 +23,55 @@ NnDoLuaScript 小N制作/装备管理/script.lua build_form
 <><$STR(S0)>
 
 [@LB_确认记录]
+#IF
 #ACT
-NnDoLuaScript 小N制作/装备管理/script.lua add_record <$STR(S$NN_NPCPARAM_1)>
+SetUpgradeItem 0
+
+#IF
+CheckBoxItemCount 0 1
+#ELSEACT
+GOTO @NPC_FORM
+MESSAGEBOX 请先放入要记录的装备
+BREAK
+
+#IF
+#ACT
+; add_record(位置, 装备Idx, 装备名称)
+NnDoLuaScript 小N制作/装备管理/script.lua add_record <$STR(S$NN_NPCPARAM_1)> <$BOXITEM[0].MAKEINDEX> <$BOXITEM[0].NAME>
+ReturnBoxItem 0
 GOTO @NPC_FORM
 BREAK
 
 [@LB_清除记录]
+#IF
 #ACT
 NnDoLuaScript 小N制作/装备管理/script.lua del_record <$STR(S$NN_NPCPARAM_1)>
 GOTO @NPC_FORM
 BREAK
 
 [@LB_清空记录]
+#IF
+#ACT
+MESSAGEBOX 您确定要清空记录吗? @LB_确定清空 @取消
+
+[@LB_确定清空]
+#IF
 #ACT
 NnDoLuaScript 小N制作/装备管理/script.lua clear_all
 GOTO @NPC_FORM
+MESSAGEBOX 清空记录完毕!
 BREAK
 
 [@LB_一键记录]
+#IF
 #ACT
 NnDoLuaScript 小N制作/装备管理/script.lua record_all
-MESSAGEBOX 一键记录完毕！
 GOTO @NPC_FORM
+MESSAGEBOX 一键记录完毕！
 BREAK
 
 [@LB_查此物品]
 #IF
-CHECKLEVELEX > 0
 #ACT
 MOV N0 <$STR(S$NN_NPCPARAM_2)>
 GOTO @LB_查询
@@ -75,8 +95,8 @@ NnDoLuaScript 小N制作/装备管理/script.lua search_record <$STR(N0)> N98 S98
 NOT EQUAL N98 0
 #ACT
 MOV N0 0
-MESSAGEBOX <$STR(S98)>
 GOTO @NPC_FORM
+MESSAGEBOX <$STR(S98)>
 BREAK
 #ELSEACT
 MOV N0 0
@@ -97,6 +117,26 @@ BREAK
 GOTO @NPC_FORM
 BREAK
 }
+
+[@ItemIntoBox0]
+#IF
+#ACT
+SetUpgradeItem 0
+
+#IF
+#ACT
+NnDoLuaScript 小N制作/装备管理/script.lua check_allow_item <$BOXITEM[0].NAME> N98
+
+#IF
+EQUAL N98 0
+#ACT
+GOTO @NPC_FORM
+BREAK
+#ELSEACT
+UnallowItemIntoBox
+GOTO @NPC_FORM
+MESSAGEBOX 很抱歉，该物品不允许进行装备Idx记录，\　\请查看[允许记录列表]
+BREAK
 
 [@捡取触发]
 {

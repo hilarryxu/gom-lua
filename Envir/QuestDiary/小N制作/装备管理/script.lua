@@ -43,23 +43,21 @@ local function res_to_list(res)
   return out
 end
 
+-- add_record(位置, 装备Idx, 装备名称)
 function _M.add_record(params)
-  local index = tonumber(params.s3)
+  local index, make_index, item_name = tonumber(params.s3), tonumber(params.s4), params.s5
 
-  local player = ffi_cast("TPlayObject*", params.player)
   local uid = mir.player_get_uid(params.player)
   local db = mir.vedis_db
 
-  local useritem = player.useritems[index - 1]
-  if useritem.make_index > 0 then
-    local stditem = mir.get_stditem_by_idx(useritem.index)
-    local item_name = ffi_str(stditem.name)
-    if item_can_record(item_name, useritem, stditem) then
+  if make_index ~= nil and make_index > 0 then
+    local stditem = mir.get_stditem_by_name(item_name)
+    if item_can_record(item_name, nil, stditem) then
       db:exec("BEGIN")
       db:execute("HMSET u_uir:%s i%d %d n%d \"%s\"",
-                  uid, index, useritem.make_index,
+                  uid, index, make_index,
                   index, item_name)
-      db:execute("SADD %s %d", KEY_RECORDED_ITEMS, useritem.make_index)
+      db:execute("SADD %s %d", KEY_RECORDED_ITEMS, make_index)
       db:exec("COMMIT")
     end
   end
@@ -172,6 +170,17 @@ function _M.search_record(params)
   msg = res:to_string()
   npc:set_var(params.player, var_code, 0)
   npc:set_var(params.player, var_msg, msg)
+end
+
+function _M.check_allow_item(params)
+  local item_name, var_code = params.s3, params.raw_s4
+
+  local npc = ffi_cast("TNormNpc*", params.npc)
+  if item_can_record(item_name) then
+    npc:set_var(params.player, var_code, 0)
+  else
+    npc:set_var(params.player, var_code, 1)
+  end
 end
 
 function _M.build_form(params)
