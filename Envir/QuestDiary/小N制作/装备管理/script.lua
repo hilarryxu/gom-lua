@@ -4,6 +4,7 @@ local ffi = require"ffi"
 local string = require"string"
 local table = require"table"
 local math = require"math"
+local print_r = require"print_r"
 
 local ffi_cast = ffi.cast
 local ffi_str = ffi.string
@@ -11,7 +12,7 @@ local str_fmt = string.format
 local unpack = unpack or table.unpack
 local tinsert = table.insert
 local iif = mir.iif
--- local _p = mir.printf
+local _p = mir.printf
 
 local _M = {
   max_record_useritem_nr = 15,
@@ -25,10 +26,12 @@ local KEY_RECORDED_ITEMS = "recorded_items"
 local KEY_RECORDED_ITEM_PICKUP_LOG = "rip_log"
 
 local function item_can_record(item_name, useritem, stditem)
-  return _M.allow_item_names[item_name] == true
+  -- return _M.allow_item_names[item_name] == true
+  return true
 end
 
 local function res_to_list(res)
+  if res:is_null() then return {} end
   assert(res:is_array())
   local out = {}
   local elem = res:array_next_elem()
@@ -111,7 +114,7 @@ end
 function _M.on_pickup_item(params)
   local arg_make_index = tonumber(params.s3)
 
-  -- local npc = ffi_cast("TNormNpc*", params.npc)
+  local npc = ffi_cast("TNormNpc*", params.npc)
   local uid = mir.player_get_uid(params.player)
   local db = mir.vedis_db
   local res
@@ -133,6 +136,9 @@ function _M.on_pickup_item(params)
   if found then return end
 
   local log_msg = [[日志：装备名字【<$CURRTEMNAME>】 装备Idx【<$CURRTEMMAKEINDEX>】 捡取人【<$USERNAME>】 行会【<$GUILDNAME>】 捡取地点【<$MapTitle>(<$X>:<$Y>)】 捡取时间【<$TIME>】]]
+  log_msg = string.gsub(log_msg, "(<%$%w+>)", function (name)
+    return npc:get_line_variable_text(params.player, name) or ""
+  end)
 
   db:exec("BEGIN")
   db:execute("SREM %s %d", KEY_RECORDED_ITEMS, arg_make_index)
@@ -204,7 +210,8 @@ function _M.build_form(params)
       name or "",
       make_index or "",
       iif(make_index,
-          str_fmt("<查此物品/@LB_查此物品(%d,%s)>", i, make_index or "0"))
+          str_fmt("<查此物品/@LB_查此物品(%d,%s)>", i, make_index or "0"),
+          "")
     ))
   end
 
@@ -214,13 +221,13 @@ function _M.build_form(params)
 　　　　　　　　　<2. /FCOLOR=239>将要记录的装备放入左边[<装备框/FCOLOR=249>]中，然后点击上方对应位置的[<确认记录/FCOLOR=249>]按钮\
 　　　　　　　　　<3. /FCOLOR=239><注意：/FCOLOR=249><装备掉落后,再通过其他途径取回后必须重新[/FCOLOR=253><确认记录/FCOLOR=249><]一次,否则无效!/FCOLOR=253>\
  \
-　　　　　　　　　<允许记录列表/FCOLOR=250> → <查看列表%s>/FCOLOR=125>　　<装备Idx：/FCOLOR=70> %s\
+　　　　　　　　　<允许记录列表/FCOLOR=250> → <查看列表%s/FCOLOR=125>　　<装备Idx：/FCOLOR=70> %s\
  \
 　<查询/@LB_查询>         %s         <一键记录/@LB_一键记录>         <清空记录/@LB_清空记录>\
 <ITEMBOX:0:21:160:10:-122:70:70:*:250#请放入要记录的装备^254#然后在上方对应位置^254#点击[确认记录]按钮^151#如有信息,直接替换>\
 ]],
       _M.allow_items_desc,
-      iif(N0 > 0, N0),
+      iif(N0 > 0, N0, ""),
       iif(N0 > 0, "<查询的装备/FCOLOR=10>", "<请输入Idx/@@InPutInteger0(请输入您要查询的装备Idx...)>")
   ))
 
